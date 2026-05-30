@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+*.db
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Env
+.env
+
+# Uploads (keep directory, not contents)
+app/backend/uploads/*
+!app/backend/uploads/.gitkeep
+
+# Eval outputs
+eval/eval_report.json
+eval/test_images/*
+!eval/test_images/.gitkeep
+.env
+venv/
+.env
+venv/

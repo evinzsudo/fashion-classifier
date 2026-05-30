@@ -1,0 +1,14 @@
+{
+  "_comment": "Map image filenames to ground-truth attribute values. Run evaluate.py after adding images to test_images/",
+  "example_shirt.jpg": {
+    "garment_type": "shirt",
+    "style": "casual",
+    "material": "cotton",
+    "color_palette": "solid white",
+    "pattern": "solid",
+    "season": "all-season",
+    "occasion": "casual everyday",
+    "consumer_profile": "young professional",
+    "location_context": "urban"
+  }
+}
