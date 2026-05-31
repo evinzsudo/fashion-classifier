@@ -13,6 +13,7 @@ class GarmentOut(BaseModel):
     filename: str
     original_filename: str
     upload_time: datetime
+    # AI-inferred
     raw_description: str
     garment_type: str
     style: str
@@ -24,12 +25,18 @@ class GarmentOut(BaseModel):
     consumer_profile: str
     trend_notes: str
     location_context: str
+    # User-supplied
+    continent: str
+    country: str
+    city: str
+    designer: str
     annotations: List[Any]
 
     model_config = {"from_attributes": True}
 
 
 class FilterOptions(BaseModel):
+    # AI-inferred attribute filters
     garment_type: List[str]
     style: List[str]
     material: List[str]
@@ -39,3 +46,11 @@ class FilterOptions(BaseModel):
     occasion: List[str]
     consumer_profile: List[str]
     location_context: List[str]
+    # User-supplied contextual filters
+    continent: List[str]
+    country: List[str]
+    city: List[str]
+    designer: List[str]
+    # Time filters derived from upload_time
+    year: List[str]
+    month: List[str]

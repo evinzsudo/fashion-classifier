@@ -9,25 +9,23 @@ dist/
 build/
 .pytest_cache/
 .mypy_cache/
+
+# Databases
 *.db
+
+# Environment — never commit secrets
+.env
 
 # Node
 node_modules/
-dist/
-.vite/
+app/frontend/dist/
+app/frontend/.vite/
 
-# Env
-.env
-
-# Uploads (keep directory, not contents)
+# Uploads — keep the directory placeholder, not user data
 app/backend/uploads/*
 !app/backend/uploads/.gitkeep
 
-# Eval outputs
-eval/eval_report.json
+# Eval outputs and test images
 eval/test_images/*
 !eval/test_images/.gitkeep
-.env
-venv/
-.env
-venv/
+eval/eval_report*.json

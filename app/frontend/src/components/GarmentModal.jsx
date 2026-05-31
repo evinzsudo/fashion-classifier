@@ -1,17 +1,29 @@
 import { useState } from "react";
 import { imageUrl, addAnnotation, deleteAnnotation } from "../api.js";
 
-const ATTR_KEYS = [
-  ["garment_type", "Type"],
-  ["style", "Style"],
-  ["material", "Material"],
-  ["color_palette", "Color Palette"],
-  ["pattern", "Pattern"],
-  ["season", "Season"],
-  ["occasion", "Occasion"],
-  ["consumer_profile", "Consumer"],
-  ["location_context", "Location"],
+const AI_ATTR_KEYS = [
+  ["garment_type",      "Garment Type"],
+  ["style",             "Style"],
+  ["material",          "Material"],
+  ["color_palette",     "Color Palette"],
+  ["pattern",           "Pattern"],
+  ["season",            "Season"],
+  ["occasion",          "Occasion"],
+  ["consumer_profile",  "Consumer Profile"],
+  ["location_context",  "Location Context"],
 ];
+
+function formatDate(iso) {
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: "numeric", month: "short", day: "numeric",
+  });
+}
+
+function formatTime(iso) {
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: "2-digit", minute: "2-digit",
+  });
+}
 
 export default function GarmentModal({ garment: initial, onClose, onUpdate }) {
   const [garment, setGarment] = useState(initial);
@@ -43,67 +55,72 @@ export default function GarmentModal({ garment: initial, onClose, onUpdate }) {
     onUpdate(updated);
   }
 
-  function formatDate(iso) {
+  function formatAnnotationDate(iso) {
     return new Date(iso).toLocaleString(undefined, {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+      month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
     });
   }
 
+  const locationParts = [garment.city, garment.country, garment.continent].filter(Boolean);
+
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className="modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="modal">
+        {/* ── Blue header ── */}
         <div className="modal-header">
-          <h2>{garment.garment_type || "Garment"}</h2>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <h2>Garment Details</h2>
+          <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
         </div>
 
+        {/* ── Two-column body ── */}
         <div className="modal-body">
-          {/* Left: image */}
+          {/* Left: image (60%) */}
           <div className="modal-image-col">
             <img
               className="modal-image"
               src={imageUrl(garment.filename)}
-              alt={garment.original_filename}
+              alt={garment.garment_type || "Garment"}
             />
-            <div className="modal-filename">{garment.original_filename}</div>
-            <div className="modal-filename" style={{ marginTop: 4 }}>
-              Uploaded {formatDate(garment.upload_time)}
-            </div>
           </div>
 
-          {/* Right: details */}
+          {/* Right: details (40%) */}
           <div className="modal-details-col">
-            {/* AI description */}
-            <div>
-              <div className="section-label">AI Description</div>
-              <p className="description-text">{garment.raw_description}</p>
-            </div>
 
-            {/* Structured attributes */}
+            {/* Description */}
+            {garment.raw_description && (
+              <div>
+                <div className="section-label">Description</div>
+                <p className="description-text">{garment.raw_description}</p>
+              </div>
+            )}
+
+            {/* AI Attributes — 2-column grid */}
             <div>
               <div className="section-label">Attributes</div>
               <div className="attrs-grid">
-                {ATTR_KEYS.map(([key, label]) => (
+                {AI_ATTR_KEYS.map(([key, label]) => (
                   <div key={key} className="attr-row">
                     <span className="attr-key">{label}</span>
-                    <span className={`attr-val${key === "trend_notes" ? " long" : ""}`}>
-                      {garment[key] || "—"}
-                    </span>
+                    <span className="attr-val">{garment[key] || "—"}</span>
                   </div>
                 ))}
-                <div className="attr-row" style={{ gridColumn: "1/-1" }}>
-                  <span className="attr-key">Trend Notes</span>
-                  <span className="attr-val long">{garment.trend_notes || "—"}</span>
-                </div>
               </div>
             </div>
 
-            {/* Annotations — visually distinct amber section */}
+            {/* Trend Notes — full-width italic */}
+            {garment.trend_notes && (
+              <div>
+                <div className="section-label">Trend Notes</div>
+                <div className="trend-notes-box">{garment.trend_notes}</div>
+              </div>
+            )}
+
+            {/* Annotations — amber background */}
             <div className="annotations-section">
-              <div className="section-label">✏️ Annotations</div>
+              <div className="section-label">✏ Annotations</div>
 
               {garment.annotations?.length === 0 && (
                 <p className="annotation-empty">No annotations yet.</p>
@@ -114,7 +131,7 @@ export default function GarmentModal({ garment: initial, onClose, onUpdate }) {
                   <div className="annotation-content">
                     <div className="annotation-text">"{ann.text}"</div>
                     <div className="annotation-meta">
-                      {ann.author} · {formatDate(ann.created_at)}
+                      {ann.author} · {formatAnnotationDate(ann.created_at)}
                     </div>
                   </div>
                   <button
@@ -150,6 +167,28 @@ export default function GarmentModal({ garment: initial, onClose, onUpdate }) {
                 </div>
               </form>
             </div>
+
+            {/* Context info box — gray at bottom */}
+            <div className="modal-context-box">
+              <div className="section-label" style={{ marginBottom: 8 }}>Context</div>
+              <div className="context-item">
+                <span className="context-icon">📅</span>
+                <span>{formatDate(garment.upload_time)} · {formatTime(garment.upload_time)}</span>
+              </div>
+              {garment.designer && (
+                <div className="context-item">
+                  <span className="context-icon">✂️</span>
+                  <span>{garment.designer}</span>
+                </div>
+              )}
+              {locationParts.length > 0 && (
+                <div className="context-item">
+                  <span className="context-icon">📍</span>
+                  <span>{locationParts.join(", ")}</span>
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
       </div>

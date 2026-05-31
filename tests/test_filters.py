@@ -18,8 +18,12 @@ def make_garment(db, **overrides):
         "season": "all-season",
         "occasion": "casual everyday",
         "consumer_profile": "young professional",
-        "trend_notes": "Classic.",
+        "trend_notes": "Classic wardrobe staple.",
         "location_context": "urban",
+        "continent": "",
+        "country": "",
+        "city": "",
+        "designer": "",
         "annotations": [],
     }
     defaults.update(overrides)
@@ -135,3 +139,106 @@ def test_delete_annotation_invalid_index(client, db_session):
     g = make_garment(db_session, filename="an_bad.jpg", annotations=[])
     resp = client.delete(f"/garments/{g.id}/annotations/99")
     assert resp.status_code == 400
+
+
+# ── New contextual filter tests ──────────────────────────────────────────────
+
+def test_filter_by_continent(client, db_session):
+    make_garment(db_session, filename="loc1.jpg", continent="Asia")
+    make_garment(db_session, filename="loc2.jpg", continent="Europe")
+
+    resp = client.get("/garments", params={"continent": "Asia"})
+    data = resp.json()
+    assert all(g["continent"] == "Asia" for g in data)
+    assert len(data) == 1
+
+
+def test_filter_by_country(client, db_session):
+    make_garment(db_session, filename="ctr1.jpg", country="Japan")
+    make_garment(db_session, filename="ctr2.jpg", country="France")
+
+    resp = client.get("/garments", params={"country": "Japan"})
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["country"] == "Japan"
+
+
+def test_filter_by_city(client, db_session):
+    make_garment(db_session, filename="cty1.jpg", city="Tokyo")
+    make_garment(db_session, filename="cty2.jpg", city="Paris")
+
+    resp = client.get("/garments", params={"city": "Tokyo"})
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["city"] == "Tokyo"
+
+
+def test_filter_by_designer(client, db_session):
+    make_garment(db_session, filename="des1.jpg", designer="Uniqlo")
+    make_garment(db_session, filename="des2.jpg", designer="Zara")
+
+    resp = client.get("/garments", params={"designer": "Uniqlo"})
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["designer"] == "Uniqlo"
+
+
+def test_filter_by_trend_keyword(client, db_session):
+    make_garment(db_session, filename="trnd1.jpg", trend_notes="Very Y2K aesthetic with wide leg silhouette.")
+    make_garment(db_session, filename="trnd2.jpg", trend_notes="Classic minimalist cut, timeless appeal.")
+
+    resp = client.get("/garments", params={"trend_keyword": "Y2K"})
+    data = resp.json()
+    assert len(data) == 1
+    assert "Y2K" in data[0]["trend_notes"]
+
+
+def test_filters_endpoint_includes_location_and_designer(client, db_session):
+    make_garment(
+        db_session,
+        filename="ctx1.jpg",
+        continent="Asia",
+        country="Japan",
+        city="Tokyo",
+        designer="Issey Miyake",
+    )
+
+    resp = client.get("/filters")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "Asia" in data["continent"]
+    assert "Japan" in data["country"]
+    assert "Tokyo" in data["city"]
+    assert "Issey Miyake" in data["designer"]
+
+
+def test_filters_endpoint_includes_year_and_month(client, db_session):
+    make_garment(db_session, filename="time1.jpg")
+
+    resp = client.get("/filters")
+    data = resp.json()
+    assert len(data["year"]) >= 1
+    assert len(data["month"]) >= 1
+    # Year should look like a 4-digit string
+    assert all(len(y) == 4 for y in data["year"])
+    # Month should be zero-padded 2-digit string
+    assert all(len(m) == 2 for m in data["month"])
+
+
+def test_garment_out_includes_new_fields(client, db_session):
+    g = make_garment(
+        db_session,
+        filename="fields.jpg",
+        continent="Europe",
+        country="Italy",
+        city="Milan",
+        designer="Prada",
+    )
+
+    resp = client.get(f"/garments/{g.id}")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["continent"] == "Europe"
+    assert data["country"] == "Italy"
+    assert data["city"] == "Milan"
+    assert data["designer"] == "Prada"

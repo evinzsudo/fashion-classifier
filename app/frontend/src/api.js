@@ -1,8 +1,11 @@
 const BASE = "";
 
-export async function uploadGarment(file) {
+export async function uploadGarment(file, metadata = {}) {
   const form = new FormData();
   form.append("file", file);
+  for (const [k, v] of Object.entries(metadata)) {
+    if (v) form.append(k, v);
+  }
   const res = await fetch(`${BASE}/upload`, { method: "POST", body: form });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));

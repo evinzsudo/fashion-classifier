@@ -1,14 +1,561 @@
 {
-  "_comment": "Map image filenames to ground-truth attribute values. Run evaluate.py after adding images to test_images/",
-  "example_shirt.jpg": {
-    "garment_type": "shirt",
+  "dress_001_pexels_8084232.jpg": {
+    "garment_type": "dress",
     "style": "casual",
     "material": "cotton",
-    "color_palette": "solid white",
-    "pattern": "solid",
+    "color_palette": "",
+    "pattern": "",
+    "season": "spring/summer",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "dress_002_pexels_18984484.jpg": {
+    "garment_type": "dress",
+    "style": "bohemian",
+    "material": "chiffon",
+    "color_palette": "",
+    "pattern": "",
+    "season": "spring/summer",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "dress_003_pexels_18984601.jpg": {
+    "garment_type": "dress",
+    "style": "formal",
+    "material": "polyester",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "formal event",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "dress_004_pexels_36594454.jpg": {
+    "garment_type": "dress",
+    "style": "casual",
+    "material": "cotton",
+    "color_palette": "",
+    "pattern": "",
+    "season": "spring/summer",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "dress_005_pexels_35052266.jpg": {
+    "garment_type": "dress",
+    "style": "minimalist",
+    "material": "polyester",
+    "color_palette": "",
+    "pattern": "",
+    "season": "spring/summer",
+    "occasion": "business casual",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+
+  "jacket_006_pexels_18144397.jpg": {
+    "garment_type": "jacket",
+    "style": "casual",
+    "material": "denim",
+    "color_palette": "",
+    "pattern": "",
+    "season": "fall/winter",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "jacket_007_pexels_7679798.jpg": {
+    "garment_type": "jacket",
+    "style": "streetwear",
+    "material": "leather",
+    "color_palette": "",
+    "pattern": "",
+    "season": "fall/winter",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "jacket_008_pexels_20100622.jpg": {
+    "garment_type": "jacket",
+    "style": "casual",
+    "material": "cotton",
+    "color_palette": "",
+    "pattern": "",
+    "season": "fall/winter",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "jacket_009_pexels_20668200.jpg": {
+    "garment_type": "jacket",
+    "style": "athletic",
+    "material": "polyester",
+    "color_palette": "",
+    "pattern": "",
+    "season": "fall/winter",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "jacket_010_pexels_34366695.jpg": {
+    "garment_type": "jacket",
+    "style": "casual",
+    "material": "denim",
+    "color_palette": "",
+    "pattern": "",
     "season": "all-season",
     "occasion": "casual everyday",
-    "consumer_profile": "young professional",
-    "location_context": "urban"
+    "consumer_profile": "",
+    "location_context": ""
+  },
+
+  "sweater_011_pexels_14641438.jpg": {
+    "garment_type": "sweater",
+    "style": "casual",
+    "material": "wool",
+    "color_palette": "",
+    "pattern": "",
+    "season": "fall/winter",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "sweater_012_pexels_14641596.jpg": {
+    "garment_type": "sweater",
+    "style": "casual",
+    "material": "knit",
+    "color_palette": "",
+    "pattern": "",
+    "season": "fall/winter",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "sweater_013_pexels_37420552.jpg": {
+    "garment_type": "sweater",
+    "style": "minimalist",
+    "material": "cotton",
+    "color_palette": "",
+    "pattern": "",
+    "season": "fall/winter",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "sweater_014_pexels_11541395.jpg": {
+    "garment_type": "sweater",
+    "style": "casual",
+    "material": "wool blend",
+    "color_palette": "",
+    "pattern": "",
+    "season": "fall/winter",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "sweater_015_pexels_9603626.jpg": {
+    "garment_type": "sweater",
+    "style": "preppy",
+    "material": "knit",
+    "color_palette": "",
+    "pattern": "",
+    "season": "fall/winter",
+    "occasion": "business casual",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+
+  "jeans_016_pexels_1082526.jpg": {
+    "garment_type": "jeans",
+    "style": "casual",
+    "material": "denim",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "jeans_017_pexels_19203164.jpg": {
+    "garment_type": "jeans",
+    "style": "casual",
+    "material": "denim",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "jeans_018_pexels_17265364.jpg": {
+    "garment_type": "jeans",
+    "style": "streetwear",
+    "material": "denim",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "jeans_019_pexels_10133274.jpg": {
+    "garment_type": "jeans",
+    "style": "casual",
+    "material": "denim",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "jeans_020_pexels_6769357.jpg": {
+    "garment_type": "jeans",
+    "style": "casual",
+    "material": "denim",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+
+  "suit_021_pexels_5264927.jpg": {
+    "garment_type": "suit",
+    "style": "formal",
+    "material": "wool blend",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "formal event",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "suit_022_pexels_6765639.jpg": {
+    "garment_type": "suit",
+    "style": "formal",
+    "material": "polyester blend",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "business casual",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "suit_023_pexels_6050430.jpg": {
+    "garment_type": "suit",
+    "style": "formal",
+    "material": "wool",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "formal event",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "suit_024_pexels_32522921.jpg": {
+    "garment_type": "suit",
+    "style": "business casual",
+    "material": "polyester blend",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "business casual",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "suit_025_pexels_4611673.jpg": {
+    "garment_type": "suit",
+    "style": "formal",
+    "material": "wool blend",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "formal event",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+
+  "coat_026_pexels_5490207.jpg": {
+    "garment_type": "coat",
+    "style": "classic",
+    "material": "wool",
+    "color_palette": "",
+    "pattern": "",
+    "season": "fall/winter",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "coat_027_pexels_19129082.jpg": {
+    "garment_type": "coat",
+    "style": "minimalist",
+    "material": "wool blend",
+    "color_palette": "",
+    "pattern": "",
+    "season": "fall/winter",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "coat_028_pexels_35524663.jpg": {
+    "garment_type": "coat",
+    "style": "classic",
+    "material": "polyester",
+    "color_palette": "",
+    "pattern": "",
+    "season": "fall/winter",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "coat_029_pexels_29833169.jpg": {
+    "garment_type": "coat",
+    "style": "casual",
+    "material": "wool",
+    "color_palette": "",
+    "pattern": "",
+    "season": "fall/winter",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "coat_030_pexels_23484047.jpg": {
+    "garment_type": "coat",
+    "style": "minimalist",
+    "material": "wool blend",
+    "color_palette": "",
+    "pattern": "",
+    "season": "fall/winter",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+
+  "blouse_031_pexels_18220443.jpg": {
+    "garment_type": "blouse",
+    "style": "casual",
+    "material": "cotton",
+    "color_palette": "",
+    "pattern": "",
+    "season": "spring/summer",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "blouse_032_pexels_12472838.jpg": {
+    "garment_type": "blouse",
+    "style": "business casual",
+    "material": "chiffon",
+    "color_palette": "",
+    "pattern": "",
+    "season": "spring/summer",
+    "occasion": "business casual",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "blouse_033_pexels_31338807.jpg": {
+    "garment_type": "blouse",
+    "style": "casual",
+    "material": "cotton",
+    "color_palette": "",
+    "pattern": "",
+    "season": "spring/summer",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "blouse_034_pexels_10145432.jpg": {
+    "garment_type": "blouse",
+    "style": "bohemian",
+    "material": "silk",
+    "color_palette": "",
+    "pattern": "",
+    "season": "spring/summer",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "blouse_035_pexels_6347593.jpg": {
+    "garment_type": "blouse",
+    "style": "business casual",
+    "material": "polyester",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "business casual",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+
+  "skirt_036_pexels_32794637.jpg": {
+    "garment_type": "skirt",
+    "style": "casual",
+    "material": "cotton",
+    "color_palette": "",
+    "pattern": "",
+    "season": "spring/summer",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "skirt_037_pexels_7391126.jpg": {
+    "garment_type": "skirt",
+    "style": "bohemian",
+    "material": "chiffon",
+    "color_palette": "",
+    "pattern": "",
+    "season": "spring/summer",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "skirt_038_pexels_33317708.jpg": {
+    "garment_type": "skirt",
+    "style": "minimalist",
+    "material": "polyester",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "business casual",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "skirt_039_pexels_6070068.jpg": {
+    "garment_type": "skirt",
+    "style": "casual",
+    "material": "cotton",
+    "color_palette": "",
+    "pattern": "",
+    "season": "spring/summer",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "skirt_040_pexels_13081347.jpg": {
+    "garment_type": "skirt",
+    "style": "formal",
+    "material": "polyester blend",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "formal event",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+
+  "sneakers_041_pexels_18804985.jpg": {
+    "garment_type": "sneakers",
+    "style": "athletic",
+    "material": "canvas",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "athletic",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "sneakers_042_pexels_30257303.jpg": {
+    "garment_type": "sneakers",
+    "style": "streetwear",
+    "material": "leather",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "sneakers_043_pexels_1447262.jpg": {
+    "garment_type": "sneakers",
+    "style": "athletic",
+    "material": "synthetic",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "athletic",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "sneakers_044_pexels_4271584.jpg": {
+    "garment_type": "sneakers",
+    "style": "casual",
+    "material": "canvas",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "sneakers_045_pexels_36463721.jpg": {
+    "garment_type": "sneakers",
+    "style": "streetwear",
+    "material": "leather",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+
+  "handbag_046_pexels_5352628.jpg": {
+    "garment_type": "handbag",
+    "style": "classic",
+    "material": "leather",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "handbag_047_pexels_8306065.jpg": {
+    "garment_type": "handbag",
+    "style": "casual",
+    "material": "synthetic leather",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "handbag_048_pexels_7165636.jpg": {
+    "garment_type": "handbag",
+    "style": "minimalist",
+    "material": "leather",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "business casual",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "handbag_049_pexels_8989582.jpg": {
+    "garment_type": "handbag",
+    "style": "casual",
+    "material": "canvas",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "casual everyday",
+    "consumer_profile": "",
+    "location_context": ""
+  },
+  "handbag_050_pexels_14584457.jpg": {
+    "garment_type": "handbag",
+    "style": "classic",
+    "material": "leather",
+    "color_palette": "",
+    "pattern": "",
+    "season": "all-season",
+    "occasion": "formal event",
+    "consumer_profile": "",
+    "location_context": ""
   }
 }
