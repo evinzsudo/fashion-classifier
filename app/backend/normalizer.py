@@ -61,16 +61,27 @@ def normalize_material(value: str) -> str:
 
 
 # ── Style ─────────────────────────────────────────────────────────────────────
+# Maps to the 10 constrained values: casual, formal, minimalist, bohemian,
+# athletic, streetwear, vintage, preppy, romantic, avant-garde
 
 _STYLE_RULES: list[tuple[str, str]] = [
-    (r"smart\s+casual|neat\s+casual|polished\s+casual", "business casual"),
-    (r"semi[\s-]formal", "business casual"),
-    (r"activewear|sportswear|athleisure", "athletic"),
-    (r"street\s*wear", "streetwear"),
-    (r"boho(?:hemian)?", "bohemian"),
+    # Must come before broader rules
     (r"avant[\s-]garde|experimental\s+fashion", "avant-garde"),
-    (r"old[\s-]money|quiet\s+luxury|clean\s+girl", "minimalist"),
+    (r"old[\s-]money|quiet\s+luxury|clean\s+girl|capsule\s+wardrobe", "minimalist"),
+    (r"street\s*wear", "streetwear"),
+    (r"activewear|sportswear|athleisure", "athletic"),
+    (r"boho(?:hemian)?", "bohemian"),
+    (r"cottagecore|feminine|flowy|soft\s+girl", "romantic"),
+    (r"ivy[\s-]league|nautical\s+preppy|classic\s+preppy", "preppy"),
+    (r"retro|thrift|secondhand|80s|90s|y2k", "vintage"),
+    # business casual and semi-formal map to formal (not in constrained vocab)
+    (r"business\s+casual|smart\s+casual|neat\s+casual|semi[\s-]formal|work\s+wear", "formal"),
 ]
+
+_VALID_STYLES = {
+    "casual", "formal", "minimalist", "bohemian", "athletic",
+    "streetwear", "vintage", "preppy", "romantic", "avant-garde",
+}
 
 
 def normalize_style(value: str) -> str:
@@ -82,6 +93,36 @@ def normalize_style(value: str) -> str:
     v = value.lower().strip()
     if re.search(r"\s+(?:and|or|/|&)\s+", v):
         v = _take_first(v)
+    # Return as-is if already a valid constrained value
+    return v
+
+
+# ── Color palette ─────────────────────────────────────────────────────────────
+# Maps to the 8 constrained values.
+
+_COLOR_RULES: list[tuple[str, str]] = [
+    # Most specific first
+    (r"black\s+and\s+white|black\s*[/&]\s*white|monochromatic\s+black", "black and white"),
+    (r"earth\s+tones?|neutral|beige|tan|camel|terracotta|sand|nude|ivory|khaki|taupe", "neutral earth tones"),
+    (r"pastel|light\s+pink|baby\s+blue|mint|lavender|blush|soft\s+color", "pastels"),
+    (r"monochrome|tonal|all.black|all.white|grayscale|single.colo", "monochrome"),
+    (r"bold|bright|vibrant|neon|primary\s+color|saturated", "bold primary colors"),
+    (r"warm|rust|orange|amber|golden|coral|mustard|burgundy|maroon", "warm tones"),
+    (r"cool|navy|teal|slate|indigo|silver|grey|gray|purple|blue\s+tone", "cool tones"),
+    (r"multi|colorful|varied|assorted|rainbow|mixed", "mixed"),
+]
+
+
+def normalize_color_palette(value: str) -> str:
+    if not value:
+        return value
+    result = _match(value, _COLOR_RULES)
+    if result:
+        return result
+    v = value.lower().strip()
+    if re.search(r"\s+(?:and|or|/|&)\s+", v):
+        # e.g. "pink and white" → "pastels" won't match above, so check for warmth
+        return v
     return v
 
 
@@ -192,6 +233,7 @@ def normalize_attributes(attrs: dict) -> dict:
         "garment_type": normalize_garment_type,
         "material": normalize_material,
         "style": normalize_style,
+        "color_palette": normalize_color_palette,
         "occasion": normalize_occasion,
         "consumer_profile": normalize_consumer_profile,
     }

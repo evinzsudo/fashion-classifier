@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { imageUrl, addAnnotation, deleteAnnotation } from "../api.js";
+import { useState, useEffect } from "react";
+import { imageUrl, addAnnotation, deleteAnnotation, fetchSimilarGarments } from "../api.js";
 
 const AI_ATTR_KEYS = [
   ["garment_type",      "Garment Type"],
@@ -25,11 +25,26 @@ function formatTime(iso) {
   });
 }
 
-export default function GarmentModal({ garment: initial, onClose, onUpdate }) {
+function formatAnnotationDate(iso) {
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
+
+export default function GarmentModal({ garment: initial, onClose, onUpdate, onNavigate }) {
   const [garment, setGarment] = useState(initial);
   const [annotationText, setAnnotationText] = useState("");
   const [authorText, setAuthorText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [similar, setSimilar] = useState([]);
+
+  // Reload similar when the viewed garment changes
+  useEffect(() => {
+    setSimilar([]);
+    fetchSimilarGarments(garment.id)
+      .then(setSimilar)
+      .catch(() => setSimilar([]));
+  }, [garment.id]);
 
   async function handleAddAnnotation(e) {
     e.preventDefault();
@@ -55,11 +70,15 @@ export default function GarmentModal({ garment: initial, onClose, onUpdate }) {
     onUpdate(updated);
   }
 
-  function formatAnnotationDate(iso) {
-    return new Date(iso).toLocaleString(undefined, {
-      month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-    });
+  function navigateTo(g) {
+    setGarment(g);
+    setAnnotationText("");
+    setAuthorText("");
   }
+
+  const confidence = garment.confidence || {};
+  const isUncertain = (key) =>
+    confidence[key] !== undefined && confidence[key] < 0.7;
 
   const locationParts = [garment.city, garment.country, garment.continent].filter(Boolean);
 
@@ -69,13 +88,13 @@ export default function GarmentModal({ garment: initial, onClose, onUpdate }) {
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="modal">
-        {/* ── Blue header ── */}
+        {/* Blue header */}
         <div className="modal-header">
           <h2>Garment Details</h2>
           <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
         </div>
 
-        {/* ── Two-column body ── */}
+        {/* Two-column body */}
         <div className="modal-body">
           {/* Left: image (60%) */}
           <div className="modal-image-col">
@@ -89,6 +108,13 @@ export default function GarmentModal({ garment: initial, onClose, onUpdate }) {
           {/* Right: details (40%) */}
           <div className="modal-details-col">
 
+            {/* Cache badge */}
+            {garment.from_cache && (
+              <div className="cache-badge">
+                ⚡ Cached Result — served from library
+              </div>
+            )}
+
             {/* Description */}
             {garment.raw_description && (
               <div>
@@ -97,20 +123,27 @@ export default function GarmentModal({ garment: initial, onClose, onUpdate }) {
               </div>
             )}
 
-            {/* AI Attributes — 2-column grid */}
+            {/* AI Attributes — 2-col grid with confidence styling */}
             <div>
               <div className="section-label">Attributes</div>
               <div className="attrs-grid">
                 {AI_ATTR_KEYS.map(([key, label]) => (
                   <div key={key} className="attr-row">
                     <span className="attr-key">{label}</span>
-                    <span className="attr-val">{garment[key] || "—"}</span>
+                    <span className={`attr-val${isUncertain(key) ? " uncertain" : ""}`}>
+                      {garment[key] || "—"}
+                      {isUncertain(key) && (
+                        <span className="confidence-hint" title={`Confidence: ${(confidence[key] * 100).toFixed(0)}%`}>
+                          {" "}({(confidence[key] * 100).toFixed(0)}%)
+                        </span>
+                      )}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Trend Notes — full-width italic */}
+            {/* Trend Notes */}
             {garment.trend_notes && (
               <div>
                 <div className="section-label">Trend Notes</div>
@@ -118,7 +151,7 @@ export default function GarmentModal({ garment: initial, onClose, onUpdate }) {
               </div>
             )}
 
-            {/* Annotations — amber background */}
+            {/* Annotations */}
             <div className="annotations-section">
               <div className="section-label">✏ Annotations</div>
 
@@ -168,7 +201,7 @@ export default function GarmentModal({ garment: initial, onClose, onUpdate }) {
               </form>
             </div>
 
-            {/* Context info box — gray at bottom */}
+            {/* Context info box */}
             <div className="modal-context-box">
               <div className="section-label" style={{ marginBottom: 8 }}>Context</div>
               <div className="context-item">
@@ -188,6 +221,32 @@ export default function GarmentModal({ garment: initial, onClose, onUpdate }) {
                 </div>
               )}
             </div>
+
+            {/* Similar Garments */}
+            {similar.length > 0 && (
+              <div>
+                <div className="section-label">Similar Garments</div>
+                <div className="similar-row">
+                  {similar.map((g) => (
+                    <button
+                      key={g.id}
+                      className="similar-card"
+                      onClick={() => navigateTo(g)}
+                      title={g.garment_type || "Garment"}
+                    >
+                      <div className="similar-img-wrap">
+                        <img
+                          src={imageUrl(g.filename)}
+                          alt={g.garment_type || "Garment"}
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="similar-label">{g.garment_type || "?"}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
           </div>
         </div>

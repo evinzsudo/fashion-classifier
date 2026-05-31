@@ -55,6 +55,12 @@ export async function deleteAnnotation(garmentId, index) {
   return res.json();
 }
 
+export async function fetchSimilarGarments(id) {
+  const res = await fetch(`${BASE}/garments/${id}/similar`);
+  if (!res.ok) throw new Error("Failed to fetch similar garments");
+  return res.json();
+}
+
 export function imageUrl(filename) {
   return `${BASE}/images/${filename}`;
 }

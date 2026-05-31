@@ -242,3 +242,64 @@ def test_garment_out_includes_new_fields(client, db_session):
     assert data["country"] == "Italy"
     assert data["city"] == "Milan"
     assert data["designer"] == "Prada"
+
+
+# ── Similar garments tests ────────────────────────────────────────────────────
+
+def test_similar_garments_requires_two_matching_attributes(client, db_session):
+    """Only garments sharing >= 2 of garment_type, style, season appear in results."""
+    source = make_garment(db_session, filename="src.jpg",
+                          garment_type="dress", style="casual", season="spring/summer")
+    # Shares 3 — should appear
+    full_match = make_garment(db_session, filename="fm.jpg",
+                              garment_type="dress", style="casual", season="spring/summer")
+    # Shares 2 — should appear
+    two_match = make_garment(db_session, filename="2m.jpg",
+                             garment_type="dress", style="casual", season="fall/winter")
+    # Shares only 1 — should NOT appear
+    one_match = make_garment(db_session, filename="1m.jpg",
+                             garment_type="dress", style="formal", season="fall/winter")
+
+    resp = client.get(f"/garments/{source.id}/similar")
+    assert resp.status_code == 200
+    ids = [g["id"] for g in resp.json()]
+    assert full_match.id in ids
+    assert two_match.id in ids
+    assert one_match.id not in ids
+    assert source.id not in ids  # source is never in its own similar list
+
+
+def test_similar_garments_excludes_self(client, db_session):
+    g = make_garment(db_session, filename="self.jpg",
+                     garment_type="jacket", style="minimalist", season="all-season")
+    resp = client.get(f"/garments/{g.id}/similar")
+    assert resp.status_code == 200
+    assert g.id not in [x["id"] for x in resp.json()]
+
+
+def test_similar_garments_returns_at_most_four(client, db_session):
+    make_garment(db_session, filename="base.jpg",
+                 garment_type="shirt", style="formal", season="all-season")
+    source = make_garment(db_session, filename="s.jpg",
+                          garment_type="shirt", style="formal", season="all-season")
+    # Create 6 similar garments
+    for i in range(6):
+        make_garment(db_session, filename=f"sim{i}.jpg",
+                     garment_type="shirt", style="formal", season="all-season")
+
+    resp = client.get(f"/garments/{source.id}/similar")
+    assert resp.status_code == 200
+    assert len(resp.json()) <= 4
+
+
+def test_similar_garments_returns_404_for_missing(client):
+    resp = client.get("/garments/999999/similar")
+    assert resp.status_code == 404
+
+
+def test_similar_garments_returns_empty_when_no_matches(client, db_session):
+    lone = make_garment(db_session, filename="lone.jpg",
+                        garment_type="unique_type_xyz", style="casual", season="all-season")
+    resp = client.get(f"/garments/{lone.id}/similar")
+    assert resp.status_code == 200
+    assert resp.json() == []

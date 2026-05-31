@@ -21,7 +21,7 @@ export default function App() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [pendingFile, setPendingFile] = useState(null);
+  const [pendingFiles, setPendingFiles] = useState(null);
   const [selectedGarment, setSelectedGarment] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [toasts, setToasts] = useState([]);
@@ -70,11 +70,10 @@ export default function App() {
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
   useEffect(() => {
     function onKeyDown(e) {
-      // "/" focuses search, unless already in a text field or modal is open
       if (
         e.key === "/" &&
         !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName) &&
-        !pendingFile &&
+        !pendingFiles &&
         !selectedGarment
       ) {
         e.preventDefault();
@@ -86,7 +85,7 @@ export default function App() {
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [pendingFile, selectedGarment]);
+  }, [pendingFiles, selectedGarment]);
 
   // ── Drag-and-drop ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -105,13 +104,14 @@ export default function App() {
       e.preventDefault();
       dragCount.current = 0;
       setIsDragging(false);
-      const file = e.dataTransfer?.files?.[0];
-      if (!file) return;
-      if (!file.type.startsWith("image/")) {
-        showToast("Please drop an image file (JPEG, PNG, WebP, or GIF).", "error");
+      const files = Array.from(e.dataTransfer?.files || []).filter(
+        (f) => f.type.startsWith("image/")
+      );
+      if (!files.length) {
+        showToast("Please drop image files (JPEG, PNG, WebP, or GIF).", "error");
         return;
       }
-      setPendingFile(file);
+      setPendingFiles(files);
     }
     document.addEventListener("dragenter", onDragEnter);
     document.addEventListener("dragleave", onDragLeave);
@@ -127,22 +127,38 @@ export default function App() {
 
   // ── Upload flow ───────────────────────────────────────────────────────────
   function handleFileSelect(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []).filter(
+      (f) => f.type.startsWith("image/")
+    );
+    if (files.length) setPendingFiles(files);
     e.target.value = "";
-    setPendingFile(file);
   }
 
-  async function handleUploadConfirm(metadata) {
-    try {
-      await uploadGarment(pendingFile, metadata);
-      setPendingFile(null);
-      showToast("Garment classified and saved.", "success");
-      await loadGarments();
-    } catch (err) {
-      showToast(err.message || "Upload failed.", "error");
-      throw err; // re-throw so UploadModal can enter error state
+  async function handleUploadFile(file, metadata) {
+    return await uploadGarment(file, metadata);
+  }
+
+  function handleBulkComplete(succeeded, failedItems, cachedCount) {
+    setPendingFiles(null);
+    const total = succeeded + failedItems.length;
+    if (failedItems.length === 0) {
+      const cacheNote = cachedCount > 0 ? ` (${cachedCount} from cache)` : "";
+      showToast(
+        `${succeeded} garment${succeeded !== 1 ? "s" : ""} added successfully${cacheNote}.`,
+        "success"
+      );
+    } else if (succeeded === 0) {
+      showToast(
+        `All ${total} uploads failed. Check your connection and try again.`,
+        "error"
+      );
+    } else {
+      showToast(
+        `${succeeded} added, ${failedItems.length} failed: ${failedItems.map((f) => f.name).join(", ")}.`,
+        "error"
+      );
     }
+    loadGarments();
   }
 
   // ── Filters ───────────────────────────────────────────────────────────────
@@ -183,6 +199,7 @@ export default function App() {
           ref={fileInputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp,image/gif"
+          multiple
           className="upload-input"
           onChange={handleFileSelect}
         />
@@ -196,7 +213,6 @@ export default function App() {
 
       {/* ── Body ── */}
       <div className="body">
-        {/* Mobile sidebar backdrop */}
         {sidebarOpen && (
           <div
             className="sidebar-backdrop"
@@ -235,17 +251,18 @@ export default function App() {
         <div className="drag-overlay" aria-hidden="true">
           <div className="drag-overlay-inner">
             <div className="drag-icon">📸</div>
-            <div className="drag-text">Drop image to classify</div>
+            <div className="drag-text">Drop images to classify</div>
           </div>
         </div>
       )}
 
       {/* ── Modals ── */}
-      {pendingFile && (
+      {pendingFiles && (
         <UploadModal
-          file={pendingFile}
-          onConfirm={handleUploadConfirm}
-          onCancel={() => setPendingFile(null)}
+          files={pendingFiles}
+          onUploadFile={handleUploadFile}
+          onComplete={handleBulkComplete}
+          onCancel={() => setPendingFiles(null)}
         />
       )}
       {selectedGarment && (
@@ -253,6 +270,7 @@ export default function App() {
           garment={selectedGarment}
           onClose={() => setSelectedGarment(null)}
           onUpdate={handleGarmentUpdate}
+          onNavigate={setSelectedGarment}
         />
       )}
 

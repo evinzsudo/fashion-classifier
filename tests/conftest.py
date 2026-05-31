@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.backend.database import Base, get_db
-from app.backend.main import app
+from app.backend.main import app, _upload_windows
 
 TEST_DB_URL = "sqlite:///./test_fashion.db"
 
@@ -40,6 +40,9 @@ def client(db_session):
             yield db_session
         finally:
             pass
+
+    # Reset per-IP rate-limit buckets so each test starts with a clean slate
+    _upload_windows.clear()
 
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as c:

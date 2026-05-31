@@ -31,6 +31,9 @@ class GarmentOut(BaseModel):
     city: str
     designer: str
     annotations: List[Any]
+    # Cache metadata (not stored in DB; populated dynamically by upload endpoint)
+    from_cache: bool = False
+    confidence: Optional[dict] = None
 
     model_config = {"from_attributes": True}
 

@@ -5,122 +5,166 @@ const CONTINENTS = [
   "North America", "Oceania", "South America",
 ];
 
-const STEPS = [
-  { label: "Uploading image…",       icon: "⬆" },
-  { label: "Analyzing with AI…",     icon: "🔍" },
-  { label: "Saving to library…",     icon: "💾" },
-];
+// Status icon for each queue item
+function StatusIcon({ status }) {
+  if (status === "done")      return <span className="queue-icon done">✓</span>;
+  if (status === "failed")    return <span className="queue-icon failed">✗</span>;
+  if (status === "uploading") return <span className="queue-spinner" />;
+  return <span className="queue-icon waiting">○</span>;
+}
 
-const STEP_DELAYS = [1500, 7000];
-
-const PROGRESS_PER_STEP = [15, 55, 90];
-
-export default function UploadModal({ file, onConfirm, onCancel }) {
-  const [previewUrl, setPreviewUrl] = useState(null);
+export default function UploadModal({ files, onUploadFile, onComplete, onCancel }) {
   const [continent, setContinent] = useState("");
-  const [country, setCountry] = useState("");
-  const [city, setCity] = useState("");
-  const [designer, setDesigner] = useState("");
-  const [status, setStatus] = useState("idle");
-  const [errorMsg, setErrorMsg] = useState("");
-  const [stepIdx, setStepIdx] = useState(0);
-  const stepTimers = useRef([]);
+  const [country, setCountry]     = useState("");
+  const [city, setCity]           = useState("");
+  const [designer, setDesigner]   = useState("");
 
+  const [phase, setPhase]       = useState("form"); // "form" | "processing"
+  const [queue, setQueue]       = useState(() =>
+    files.map((f) => ({ file: f, status: "waiting", error: null }))
+  );
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [errorMsg, setErrorMsg]     = useState("");
+  const processingRef = useRef(false);
+
+  // Preview URL for first file
+  const [previewUrl, setPreviewUrl] = useState(null);
   useEffect(() => {
-    const url = URL.createObjectURL(file);
+    if (!files[0]) return;
+    const url = URL.createObjectURL(files[0]);
     setPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
-  }, [file]);
-
-  useEffect(() => {
-    stepTimers.current.forEach(clearTimeout);
-    stepTimers.current = [];
-    if (status !== "loading") {
-      setStepIdx(0);
-      return;
-    }
-    STEP_DELAYS.forEach((delay, i) => {
-      stepTimers.current.push(
-        setTimeout(() => setStepIdx(i + 1), delay)
-      );
-    });
-    return () => stepTimers.current.forEach(clearTimeout);
-  }, [status]);
-
-  const isLoading = status === "loading";
-  const progressWidth = isLoading ? PROGRESS_PER_STEP[stepIdx] ?? 90 : 0;
+  }, [files]);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (isLoading) return;
-    setStatus("loading");
+    if (processingRef.current) return;
+    processingRef.current = true;
+    setPhase("processing");
     setErrorMsg("");
-    try {
-      await onConfirm({ continent, country, city, designer });
-    } catch (err) {
-      setStatus("error");
-      setErrorMsg(err.message || "Classification failed. Please try again.");
+
+    const metadata = { continent, country, city, designer };
+    let succeeded = 0;
+    let cachedCount = 0;
+    const failedItems = [];
+
+    for (let i = 0; i < files.length; i++) {
+      setCurrentIdx(i);
+      setQueue((q) =>
+        q.map((item, idx) => (idx === i ? { ...item, status: "uploading" } : item))
+      );
+      try {
+        const result = await onUploadFile(files[i], metadata);
+        if (result?.from_cache) cachedCount++;
+        succeeded++;
+        setQueue((q) =>
+          q.map((item, idx) => (idx === i ? { ...item, status: "done" } : item))
+        );
+      } catch (err) {
+        const msg = err.message || "Upload failed";
+        failedItems.push({ name: files[i].name, error: msg });
+        setQueue((q) =>
+          q.map((item, idx) =>
+            idx === i ? { ...item, status: "failed", error: msg } : item
+          )
+        );
+      }
     }
+
+    processingRef.current = false;
+    onComplete(succeeded, failedItems, cachedCount);
   }
+
+  const isProcessing = phase === "processing";
+  const doneCount  = queue.filter((q) => q.status === "done").length;
+  const totalCount = files.length;
 
   return (
     <div
       className="modal-overlay"
-      onClick={isLoading ? undefined : (e) => e.target === e.currentTarget && onCancel()}
+      onClick={isProcessing ? undefined : (e) => e.target === e.currentTarget && onCancel()}
     >
       <div className="modal upload-modal">
         {/* Blue header */}
         <div className="modal-header">
-          <h2>Upload Garment</h2>
+          <h2>
+            {isProcessing
+              ? `Analyzing ${currentIdx + 1} of ${totalCount}…`
+              : `Upload ${totalCount === 1 ? "Garment" : `${totalCount} Garments`}`}
+          </h2>
           <button
             className="modal-close"
-            onClick={isLoading ? undefined : onCancel}
-            disabled={isLoading}
+            onClick={isProcessing ? undefined : onCancel}
+            disabled={isProcessing}
           >
             ×
           </button>
         </div>
 
         <div className="upload-modal-body">
-          {/* Preview column */}
+          {/* Left: preview + file queue */}
           <div className="upload-preview-col">
-            <div className={`upload-dnd-zone${previewUrl ? " has-preview" : ""}`}>
-              {previewUrl ? (
-                <img className="upload-preview-img" src={previewUrl} alt="Preview" />
-              ) : (
-                <>
-                  <div className="upload-dnd-icon">📷</div>
-                  <div className="upload-dnd-text">Image preview</div>
-                </>
-              )}
-            </div>
-            {file && (
-              <div className="upload-preview-name">{file.name}</div>
+            {files.length === 1 ? (
+              <div className="upload-dnd-zone has-preview">
+                {previewUrl && (
+                  <img className="upload-preview-img" src={previewUrl} alt="Preview" />
+                )}
+              </div>
+            ) : (
+              <div className="upload-queue-list">
+                {queue.map((item, i) => (
+                  <div
+                    key={i}
+                    className={`queue-item${item.status === "uploading" ? " active" : ""}${item.status === "failed" ? " failed" : ""}`}
+                  >
+                    <StatusIcon status={item.status} />
+                    <span className="queue-name" title={item.file.name}>
+                      {item.file.name}
+                    </span>
+                    {item.error && (
+                      <span className="queue-error" title={item.error}>!</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {isProcessing && (
+              <div className="upload-progress-bar-wrap" style={{ marginTop: 12 }}>
+                <div
+                  className="upload-progress-bar-fill"
+                  style={{ width: `${totalCount > 0 ? (doneCount / totalCount) * 100 : 0}%` }}
+                />
+              </div>
             )}
           </div>
 
-          {/* Right column */}
-          {isLoading ? (
+          {/* Right: metadata form or progress steps for single file */}
+          {files.length === 1 && isProcessing ? (
             <div className="upload-classifying">
-              {/* Animated progress bar */}
               <div className="upload-progress-bar-wrap">
                 <div
                   className="upload-progress-bar-fill"
-                  style={{ width: `${progressWidth}%` }}
+                  style={{
+                    width: queue[0]?.status === "done" ? "100%"
+                      : queue[0]?.status === "uploading" ? "55%"
+                      : "0%",
+                  }}
                 />
               </div>
-
               <div className="upload-steps">
-                {STEPS.map((step, i) => (
+                {[
+                  { label: "Uploading image…",   done: queue[0]?.status !== "waiting" },
+                  { label: "Analyzing with AI…", done: queue[0]?.status === "done" },
+                  { label: "Saving to library…", done: queue[0]?.status === "done" },
+                ].map((step, i) => (
                   <div
                     key={i}
-                    className={`upload-step${i < stepIdx ? " done" : ""}${i === stepIdx ? " active" : ""}`}
+                    className={`upload-step${step.done ? " done" : ""}${!step.done && i === (queue[0]?.status === "uploading" ? 1 : 0) ? " active" : ""}`}
                   >
-                    <span className="upload-step-icon">
-                      {i < stepIdx ? "✓" : step.icon}
-                    </span>
+                    <span className="upload-step-icon">{step.done ? "✓" : ["⬆", "🔍", "💾"][i]}</span>
                     <span className="upload-step-label">{step.label}</span>
-                    {i === stepIdx && (
+                    {!step.done && queue[0]?.status === "uploading" && i === 1 && (
                       <span className="upload-step-spinner" />
                     )}
                   </div>
@@ -129,13 +173,13 @@ export default function UploadModal({ file, onConfirm, onCancel }) {
             </div>
           ) : (
             <form className="upload-form-col" onSubmit={handleSubmit}>
-              {status === "error" && (
+              {errorMsg && (
                 <div className="upload-error-banner">
                   {errorMsg}
                   <button
                     type="button"
                     className="upload-error-dismiss"
-                    onClick={() => setStatus("idle")}
+                    onClick={() => setErrorMsg("")}
                   >
                     ×
                   </button>
@@ -143,7 +187,9 @@ export default function UploadModal({ file, onConfirm, onCancel }) {
               )}
 
               <p className="upload-form-hint">
-                All fields optional — stored as user-supplied metadata, not AI-inferred.
+                {files.length > 1
+                  ? `${files.length} images queued. Metadata applies to all.`
+                  : "All fields optional — stored as user-supplied metadata."}
               </p>
 
               <div className="upload-field-group">
@@ -154,6 +200,7 @@ export default function UploadModal({ file, onConfirm, onCancel }) {
                   placeholder="e.g. Acne Studios, Uniqlo…"
                   value={designer}
                   onChange={(e) => setDesigner(e.target.value)}
+                  disabled={isProcessing}
                 />
               </div>
 
@@ -163,6 +210,7 @@ export default function UploadModal({ file, onConfirm, onCancel }) {
                   className="upload-field-input"
                   value={continent}
                   onChange={(e) => setContinent(e.target.value)}
+                  disabled={isProcessing}
                 >
                   <option value="">— Select —</option>
                   {CONTINENTS.map((c) => (
@@ -180,6 +228,7 @@ export default function UploadModal({ file, onConfirm, onCancel }) {
                     placeholder="e.g. Japan"
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
+                    disabled={isProcessing}
                   />
                 </div>
                 <div className="upload-field-group">
@@ -190,16 +239,26 @@ export default function UploadModal({ file, onConfirm, onCancel }) {
                     placeholder="e.g. Tokyo"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
+                    disabled={isProcessing}
                   />
                 </div>
               </div>
 
               <div className="upload-form-actions">
-                <button type="button" className="upload-cancel-btn" onClick={onCancel}>
+                <button
+                  type="button"
+                  className="upload-cancel-btn"
+                  onClick={onCancel}
+                  disabled={isProcessing}
+                >
                   Cancel
                 </button>
-                <button type="submit" className="upload-confirm-btn">
-                  Classify &amp; Save
+                <button
+                  type="submit"
+                  className="upload-confirm-btn"
+                  disabled={isProcessing}
+                >
+                  {files.length > 1 ? `Upload All (${files.length})` : "Classify & Save"}
                 </button>
               </div>
             </form>

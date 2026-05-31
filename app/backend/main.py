@@ -9,6 +9,7 @@ Start-up sequence
 5. Mount all API routes.
 """
 
+import hashlib
 import io
 import logging
 import os
@@ -99,10 +100,12 @@ def _check_environment() -> None:
 def _migrate(eng) -> None:
     """Idempotently add columns introduced after initial schema creation."""
     new_cols = [
-        "ALTER TABLE garments ADD COLUMN continent TEXT DEFAULT ''",
-        "ALTER TABLE garments ADD COLUMN country  TEXT DEFAULT ''",
-        "ALTER TABLE garments ADD COLUMN city     TEXT DEFAULT ''",
-        "ALTER TABLE garments ADD COLUMN designer TEXT DEFAULT ''",
+        "ALTER TABLE garments ADD COLUMN continent  TEXT DEFAULT ''",
+        "ALTER TABLE garments ADD COLUMN country    TEXT DEFAULT ''",
+        "ALTER TABLE garments ADD COLUMN city       TEXT DEFAULT ''",
+        "ALTER TABLE garments ADD COLUMN designer   TEXT DEFAULT ''",
+        "ALTER TABLE garments ADD COLUMN file_hash  TEXT",
+        "ALTER TABLE garments ADD COLUMN confidence TEXT",
     ]
     with eng.connect() as conn:
         for stmt in new_cols:
@@ -111,6 +114,14 @@ def _migrate(eng) -> None:
                 conn.commit()
             except Exception:
                 pass  # column already exists
+        # Non-unique index on file_hash (NULLs for legacy rows are fine)
+        try:
+            conn.execute(sql_text(
+                "CREATE INDEX IF NOT EXISTS ix_garments_file_hash ON garments(file_hash)"
+            ))
+            conn.commit()
+        except Exception:
+            pass
 
 
 def _normalize_existing() -> None:
@@ -230,13 +241,21 @@ async def upload_garment(
 
     _validate_image(image_bytes, file.filename or "unknown")
 
+    # ── Cache check ───────────────────────────────────────────────────────────
+    file_hash = hashlib.md5(image_bytes).hexdigest()
+    existing = db.query(Garment).filter(Garment.file_hash == file_hash).first()
+    if existing:
+        log.info("Cache hit for hash %s — returning existing garment %d", file_hash, existing.id)
+        result = GarmentOut.model_validate(existing)
+        return result.model_copy(update={"from_cache": True})
+
     ext = Path(file.filename or "upload").suffix or ".jpg"
     filename = f"{uuid.uuid4()}{ext}"
     dest = UPLOAD_DIR / filename
     dest.write_bytes(image_bytes)
 
     try:
-        raw_description, attrs = await classify_image(image_bytes, file.content_type)
+        raw_description, attrs, confidence = await classify_image(image_bytes, file.content_type)
         attrs = normalize_attributes(attrs)
     except anthropic_sdk.AuthenticationError:
         dest.unlink(missing_ok=True)
@@ -282,6 +301,8 @@ async def upload_garment(
         country=country.strip(),
         city=city.strip(),
         designer=designer.strip(),
+        file_hash=file_hash,
+        confidence=confidence,
         annotations=[],
     )
     db.add(garment)
@@ -368,6 +389,51 @@ def get_garment(garment_id: int, db: Session = Depends(get_db)) -> GarmentOut:
     if not garment:
         raise HTTPException(404, "Garment not found.")
     return garment
+
+
+@app.get("/garments/{garment_id}/similar", response_model=List[GarmentOut], tags=["garments"])
+def get_similar_garments(
+    garment_id: int,
+    db: Session = Depends(get_db),
+) -> List[GarmentOut]:
+    """Return up to 4 garments that share at least 2 of: garment_type, style, season.
+
+    Candidates are scored by number of matching attributes and returned highest-score
+    first, then newest first. The source garment is always excluded from results.
+    """
+    garment = db.query(Garment).filter(Garment.id == garment_id).first()
+    if not garment:
+        raise HTTPException(404, "Garment not found.")
+
+    # Fetch candidates sharing at least one of the three matching attributes
+    from sqlalchemy import or_ as _or
+    conditions = []
+    if garment.garment_type:
+        conditions.append(Garment.garment_type == garment.garment_type)
+    if garment.style:
+        conditions.append(Garment.style == garment.style)
+    if garment.season:
+        conditions.append(Garment.season == garment.season)
+
+    if not conditions:
+        return []
+
+    candidates = (
+        db.query(Garment)
+        .filter(Garment.id != garment_id, _or(*conditions))
+        .all()
+    )
+
+    def _score(g: Garment) -> int:
+        return (
+            (g.garment_type == garment.garment_type and bool(garment.garment_type))
+            + (g.style == garment.style and bool(garment.style))
+            + (g.season == garment.season and bool(garment.season))
+        )
+
+    similar = [g for g in candidates if _score(g) >= 2]
+    similar.sort(key=lambda g: (-_score(g), -(g.id or 0)))
+    return similar[:4]
 
 
 # ── Annotations ───────────────────────────────────────────────────────────────

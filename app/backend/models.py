@@ -39,6 +39,10 @@ class Garment(Base):
     city = Column(String, default="")
     designer = Column(String, default="")
 
+    # ── Cache & confidence ──────────────────────────────────────────────────
+    file_hash = Column(String, nullable=True, index=True)   # MD5 of image bytes for cache dedup
+    confidence = Column(JSON, nullable=True)                 # {attr: float} self-reported by Claude
+
     # ── User annotations ────────────────────────────────────────────────────
     # Stored as JSON list of {text: str, author: str, created_at: str}
     annotations = Column(JSON, default=list)

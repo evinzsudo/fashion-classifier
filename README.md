@@ -15,6 +15,7 @@ AI-powered fashion garment classification using Claude vision. Upload garment im
 7. [Known Limitations & Next Steps](#7-known-limitations--next-steps)
 8. [How to Get API Keys](#8-how-to-get-api-keys)
 9. [Running Tests & Evaluation](#9-running-tests--evaluation)
+10. [API Reference](#10-api-reference)
 
 ---
 
@@ -113,7 +114,7 @@ User selects image + optional metadata (location, designer)
 /app/backend/   FastAPI routes, classifier, normalizer, DB models
 /app/frontend/  React + Vite, component-based UI
 /eval/          Evaluation script + test images + labels
-/tests/         35 pytest tests (unit, integration, e2e)
+/tests/         45 pytest tests (unit, integration, e2e)
 Makefile        make install / run / test / eval
 ```
 
@@ -182,7 +183,9 @@ The prompt passed to Claude includes:
 
 - An explicit JSON schema showing the expected field names and value types, so the model produces machine-parseable output without guessing the format.
 - An explicit instruction not to wrap the JSON in markdown fences (` ```json ` blocks), since the response is parsed directly.
-- Brief per-field guidance to set scope (e.g., `color_palette` should list two to four dominant colors; `occasion` should be a single normalized phrase like "business casual" rather than a sentence).
+- **Constrained vocabularies** for two high-variance fields: `style` is restricted to 10 values (`casual`, `formal`, `minimalist`, `bohemian`, `athletic`, `streetwear`, `vintage`, `preppy`, `romantic`, `avant-garde`) and `color_palette` to 8 values (`neutral earth tones`, `bold primary colors`, `pastels`, `monochrome`, `warm tones`, `cool tones`, `black and white`, `mixed`). Constraints collapse the open-ended output space, reducing filter clutter and improving cross-garment comparability.
+- **Three few-shot examples** (a floral dress, a structured blazer, and distressed jeans) demonstrating ideal JSON output, which anchors Claude's interpretation of each field in fashion-domain terms and improves consistency across diverse image types.
+- A **`confidence` object** alongside the attribute fields, where each attribute has a 0.0–1.0 self-reported confidence score. Scores below 0.7 are surfaced in the UI as gray italic text with the percentage shown, signalling attributes the model is less certain about.
 
 ### Fallback Extraction
 
@@ -268,10 +271,6 @@ Annotations are currently free-text with an author name. A proper tag system wit
 
 `evaluate.py` uploads test images to the running backend, inserting real rows into the live database. Running the evaluation multiple times creates duplicate records. Use the `--dry-run` flag to classify images without storing results, or point `--api-url` at a separate backend instance backed by a temporary database.
 
-**Batch upload**
-
-Only single-image upload is supported. Bulk ingestion of a folder of images would require a background task queue (e.g., Celery or FastAPI `BackgroundTasks`) to avoid blocking the HTTP response while multiple Claude API calls are in flight.
-
 **No authentication**
 
 The API has no auth layer. All endpoints are publicly accessible to anyone who can reach the server. This is appropriate for local or single-user deployment only. Adding authentication would require token-based auth middleware and user-scoped data isolation.
@@ -307,7 +306,7 @@ A cloud deployment would require: object storage (e.g., AWS S3 or GCS) to replac
 Tests use an in-memory SQLite database and mock the Anthropic API. No API key is required to run them.
 
 ```bash
-# Run all 35 tests
+# Run all 45 tests
 make test
 
 # Or run directly with pytest for verbose output
@@ -337,3 +336,100 @@ python eval/download_test_images.py --per-term 5
 ```
 
 The script prints per-attribute accuracy to stdout and writes a full `eval_report.json` alongside the script. Use `--dry-run` to run classification through the Claude API directly without inserting any rows into the database — useful for benchmarking prompt changes without polluting the garment collection.
+
+---
+
+## 10. API Reference
+
+FastAPI auto-generates interactive API docs (with a built-in try-it UI) at **http://localhost:8000/docs** when the backend is running. The examples below use `curl` against a locally running server.
+
+### GET /health
+
+Check server liveness and API key status.
+
+```bash
+curl http://localhost:8000/health
+# {"status":"ok","anthropic_api_key":"configured","version":"1.0.0"}
+```
+
+### POST /upload
+
+Upload a garment image and classify it with Claude. All form fields except `file` are optional metadata.
+
+```bash
+curl -X POST http://localhost:8000/upload \
+  -F "file=@/path/to/jacket.jpg" \
+  -F "designer=Acne Studios" \
+  -F "continent=Europe" \
+  -F "country=Sweden" \
+  -F "city=Stockholm"
+```
+
+If the same image has been uploaded before (identical MD5 hash), the existing result is returned immediately with `"from_cache": true` — no Claude API call is made.
+
+### GET /garments
+
+List all garments, with optional full-text search and attribute filters. All parameters are optional and combinable.
+
+```bash
+# All garments
+curl "http://localhost:8000/garments"
+
+# Filter by garment type and style
+curl "http://localhost:8000/garments?garment_type=dress&style=romantic"
+
+# Full-text search across descriptions, attributes, and annotations
+curl "http://localhost:8000/garments?search=oversized+denim"
+
+# Filter by location and designer
+curl "http://localhost:8000/garments?continent=Asia&designer=Issey+Miyake"
+
+# Filter by upload year/month
+curl "http://localhost:8000/garments?year=2025&month=03"
+
+# Keyword search scoped to trend notes
+curl "http://localhost:8000/garments?trend_keyword=Y2K"
+```
+
+### GET /garments/{id}
+
+Fetch a single garment by its integer ID.
+
+```bash
+curl http://localhost:8000/garments/42
+```
+
+### GET /garments/{id}/similar
+
+Return up to 4 garments that share at least 2 of the three attributes: `garment_type`, `style`, `season`. Results are sorted by number of matching attributes (most similar first).
+
+```bash
+curl http://localhost:8000/garments/42/similar
+```
+
+### POST /garments/{id}/annotations
+
+Append a user annotation (text note) to a garment.
+
+```bash
+curl -X POST http://localhost:8000/garments/42/annotations \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Spotted at Paris Fashion Week AW25", "author": "editor"}'
+```
+
+### DELETE /garments/{id}/annotations/{index}
+
+Delete an annotation by its 0-based index in the garment's annotation list.
+
+```bash
+curl -X DELETE http://localhost:8000/garments/42/annotations/0
+```
+
+### GET /filters
+
+Return all distinct attribute values currently present in the database. Used to populate the filter sidebar. Values are fully data-driven — they reflect exactly what has been uploaded.
+
+```bash
+curl http://localhost:8000/filters
+# {"garment_type":["blazer","dress","hoodie"],"style":["casual","formal"],...}
+```
