@@ -16,6 +16,8 @@ AI-powered fashion garment classification using Claude vision. Upload garment im
 8. [How to Get API Keys](#8-how-to-get-api-keys)
 9. [Running Tests & Evaluation](#9-running-tests--evaluation)
 10. [API Reference](#10-api-reference)
+11. [Deployment](#11-deployment)
+12. [Next Steps](#12-next-steps)
 
 ---
 
@@ -433,3 +435,95 @@ Return all distinct attribute values currently present in the database. Used to 
 curl http://localhost:8000/filters
 # {"garment_type":["blazer","dress","hoodie"],"style":["casual","formal"],...}
 ```
+
+---
+
+## 11. Deployment
+
+> **Note:** For this POC, local deployment is intentional. Running locally keeps setup to a single `make install && make run-backend && make run-frontend`, avoids cloud costs, and removes the need to configure object storage, managed databases, or secret managers. The steps below describe a straightforward path to a hosted deployment when that becomes necessary.
+
+### Backend — Railway or Render (free tier)
+
+Both platforms can serve a FastAPI app from a GitHub repo with minimal configuration. The steps below use Railway as an example; Render is nearly identical.
+
+1. Push the repo to GitHub (if not already there).
+2. Create a new project at [railway.app](https://railway.app) and select **Deploy from GitHub repo**.
+3. Point Railway at the repo root and set the **start command** to:
+   ```
+   uvicorn app.backend.main:app --host 0.0.0.0 --port $PORT
+   ```
+4. Set the following environment variables in the Railway dashboard under **Variables**:
+   ```
+   ANTHROPIC_API_KEY=sk-ant-...
+   CORS_ORIGINS=https://your-frontend.vercel.app
+   DATABASE_URL=postgresql://user:pass@host:5432/dbname   # see Database section
+   ```
+5. Railway assigns a public URL such as `https://fashion-classifier.up.railway.app`. Copy this — you will need it when deploying the frontend.
+
+### Frontend — Vercel or Netlify
+
+1. Create a new project at [vercel.com](https://vercel.com) and import the same GitHub repo.
+2. Set the **root directory** to `app/frontend` and the **build command** to `npm run build` with output directory `dist`.
+3. Add an environment variable:
+   ```
+   VITE_API_URL=https://fashion-classifier.up.railway.app
+   ```
+4. Update `app/frontend/src/api.js` to read the base URL from the environment variable:
+   ```js
+   const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+   ```
+5. Vercel deploys automatically on every push to `main` and provides a public URL.
+
+### Database — SQLite to PostgreSQL
+
+SQLite is fine for a single-user local prototype but does not support concurrent writes and stores data in a local file that is lost when a cloud container restarts.
+
+For a production deployment, swap to **PostgreSQL**. [Supabase](https://supabase.com) provides a free hosted PostgreSQL instance.
+
+**What to change:**
+
+1. Add `psycopg2-binary` to `requirements.txt`.
+2. In `app/backend/database.py`, replace the SQLite connection string:
+   ```python
+   # Before (SQLite)
+   SQLALCHEMY_DATABASE_URL = "sqlite:///./fashion.db"
+
+   # After (PostgreSQL via env var)
+   import os
+   SQLALCHEMY_DATABASE_URL = os.environ["DATABASE_URL"]
+   ```
+3. Remove the `connect_args={"check_same_thread": False}` kwarg — that flag is SQLite-specific.
+4. Run `alembic upgrade head` (or recreate the schema) against the new database on first deploy.
+
+The SQLAlchemy ORM code in `models.py` and all query logic in `main.py` are already database-agnostic and require no changes.
+
+### Environment variables in production
+
+| Variable | Required | Description |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Yes | Anthropic API key for Claude vision classification |
+| `DATABASE_URL` | Yes (cloud) | PostgreSQL connection string; SQLite path for local |
+| `CORS_ORIGINS` | Yes (cloud) | Comma-separated list of allowed frontend origins, e.g. `https://your-app.vercel.app` |
+| `VITE_API_URL` | Frontend | Public backend URL; consumed at build time by Vite |
+
+For local development these are set in `.env`. On Railway/Render/Vercel they are set through each platform's environment variable UI and injected at runtime — never commit the actual values to the repo.
+
+---
+
+## 12. Next Steps
+
+The following improvements would be the highest-value additions with more development time, roughly in priority order:
+
+1. **Structured tagging system** — Replace free-text annotations with a tags table (many-to-many between `tags` and `garments`). Tags would be predefined or user-created, stored as normalized strings, and exposed as their own filter dimension in the sidebar. This makes annotated garments fully searchable without relying on string matching inside JSON blobs.
+
+2. **Eval database isolation** — The evaluation script currently writes real rows into the live database. The `--dry-run` flag already avoids this, but a cleaner solution is a separate test database (controlled via `--db-url`) that is created, populated, and torn down as part of the eval run. This would let the eval CI job run safely against a production-like backend without polluting the garment collection.
+
+3. **Real-time collaborative annotations** — Replace the current polling-based annotation UI with a WebSocket channel (FastAPI natively supports `websockets`). Multiple designers could annotate the same garment simultaneously and see each other's notes appear live, which is the primary workflow for a shared trend-research tool.
+
+4. **Batch image processing with async queue** — The current upload endpoint is synchronous: one HTTP request, one Claude API call, one response. For bulk uploads (the existing `/bulk-upload` endpoint queues files sequentially), a proper async task queue (Celery + Redis, or FastAPI `BackgroundTasks` for lighter workloads) would let users upload many images at once and poll for results, rather than waiting on a long HTTP request.
+
+5. **Prompt optimization based on eval results** — `style` accuracy is 24% and `material` is 36%. Both could be improved with targeted prompt changes: domain-specific few-shot examples for `style` drawn from real designer vocabulary, and explicit instructions for `material` to infer from texture and sheen cues rather than tactile assumption. Running eval as a regression gate in CI would prevent prompt regressions as the prompt evolves.
+
+6. **User authentication** — Add token-based auth (JWT via `python-jose`, or OAuth via `authlib`) with user-scoped data isolation. Each designer's garment library would be private by default, with optional sharing. This is a prerequisite for any multi-user or cloud-hosted deployment.
+
+7. **Export functionality** — Allow designers to export their collection as a CSV (all attributes as columns) or as a PDF mood board (grid of thumbnails with key attributes). Both are straightforward given the existing structured data — `pandas` + `reportlab` for PDF, or a client-side React-to-PDF library like `react-pdf`.
